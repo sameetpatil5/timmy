@@ -11,7 +11,11 @@ import io
 # Import utility modules
 from config.patterns import SUPPORTED_FORMATS, FILENAME_PATTERNS
 from utils.image_loader import load_image, get_image_info, validate_image_format
-from utils.exif_reader import get_datetime_original, get_all_datetime_fields
+from utils.exif_reader import (
+    get_datetime_original,
+    get_all_datetime_fields,
+    has_valid_exif_datetime,
+)
 from utils.filename_parser import (
     parse_filename_auto,
     parse_filename_custom,
@@ -124,16 +128,41 @@ if uploaded_file is not None:
 
         datetime_fields = get_all_datetime_fields(image)
 
+        # Check if valid EXIF datetime exists
+        has_exif, exif_dt = has_valid_exif_datetime(image)
+
         for field, value in datetime_fields.items():
             if value:
                 st.write(f"- {field}: `{value}`")
             else:
                 st.write(f"- {field}: *Not set*")
 
+        # Show alert if EXIF already has valid date
+        if has_exif:
+            st.success(
+                f"✅ **Valid EXIF date found:** {exif_dt.strftime('%Y-%m-%d %H:%M:%S')}"
+            )
+            st.info(
+                "💡 The output file will use this existing EXIF date. To override, use Manual Entry mode."
+            )
+        else:
+            st.warning(
+                "⚠️ **No valid EXIF date found.** Will extract from filename or use manual entry."
+            )
+
     st.write("---")
+
+    # Check if EXIF already has valid datetime
+    has_exif, exif_dt = has_valid_exif_datetime(image)
 
     # Date extraction mode selection
     st.header("2️⃣ Choose Date Extraction Method")
+
+    # If EXIF already exists, show notice and default to using it
+    if has_exif:
+        st.info(
+            f"ℹ️ **Existing EXIF date detected:** {exif_dt.strftime('%Y-%m-%d %H:%M:%S')}. This will be used in the output unless you choose Manual Entry to override."
+        )
 
     extraction_mode = st.radio(
         "Select how to determine the correct capture date:",
@@ -142,14 +171,25 @@ if uploaded_file is not None:
             "🔹 Custom Filename Pattern",
             "🔹 Manual Date-Time Entry",
         ],
-        help="Choose the method that best fits your needs",
+        help="Choose the method that best fits your needs. If EXIF date exists, it will be preserved unless Manual Entry is used.",
     )
 
     target_datetime = None
     mode_message = ""
+    use_existing_exif = False
 
-    # Mode A: Automatic Parsing
-    if extraction_mode == "🔹 Automatic Filename Parsing":
+    # If EXIF exists and user is NOT using manual entry, use existing EXIF
+    if has_exif and extraction_mode != "🔹 Manual Date-Time Entry":
+        target_datetime = exif_dt
+        use_existing_exif = True
+        mode_message = (
+            f"Using existing EXIF date: {target_datetime.strftime('%Y-%m-%d %H:%M:%S')}"
+        )
+        st.success(f"✅ {mode_message}")
+        st.info("💡 To override this date, switch to **Manual Date-Time Entry** mode.")
+
+    # Mode A: Automatic Parsing (only if no EXIF or user wants to override)
+    elif extraction_mode == "🔹 Automatic Filename Parsing":
         st.subheader("Automatic Pattern Detection")
 
         with st.expander("📖 Supported Patterns", expanded=False):
@@ -238,22 +278,33 @@ if uploaded_file is not None:
     # Mode C: Manual Entry
     elif extraction_mode == "🔹 Manual Date-Time Entry":
         st.subheader("Manual Date and Time")
-        st.warning("⚠️ This will override any date information from the filename.")
+
+        if has_exif:
+            st.warning(
+                f"⚠️ This will override the existing EXIF date ({exif_dt.strftime('%Y-%m-%d %H:%M:%S')})."
+            )
+        else:
+            st.info("ℹ️ No existing EXIF date found. You can set it manually.")
 
         col1, col2 = st.columns(2)
 
+        # Pre-fill with existing EXIF if available, otherwise use current date
+        default_date = exif_dt.date() if has_exif else datetime.now().date()
+        default_time = exif_dt.time() if has_exif else time(12, 0, 0)
+
         with col1:
             date_input = st.date_input(
-                "Date", value=datetime.now().date(), help="Select the capture date"
+                "Date", value=default_date, help="Select the capture date"
             )
 
         with col2:
             time_input = st.time_input(
-                "Time", value=time(12, 0, 0), help="Select the capture time"
+                "Time", value=default_time, help="Select the capture time"
             )
 
         target_datetime = datetime.combine(date_input, time_input)
         mode_message = f"Manually set: {target_datetime.strftime('%Y-%m-%d %H:%M:%S')}"
+        use_existing_exif = False
 
     st.write("---")
 
@@ -305,6 +356,16 @@ if uploaded_file is not None:
 
     if target_datetime and any([modify_original, modify_digitized, modify_datetime]):
 
+        # Show what will happen
+        if use_existing_exif:
+            st.info(
+                f"ℹ️ **Action:** Preserving existing EXIF date and creating output file with the same datetime."
+            )
+        else:
+            st.info(
+                f"ℹ️ **Action:** Updating EXIF date to: **{target_datetime.strftime('%Y-%m-%d %H:%M:%S')}**"
+            )
+
         if st.button("🔧 Apply Changes", type="primary", use_container_width=True):
 
             with st.spinner("Processing image..."):
@@ -352,7 +413,7 @@ if uploaded_file is not None:
                             # Show success
                             st.success("✅ Changes applied successfully!")
 
-                            # Show summary
+                            # Show summary with appropriate message
                             old_dt = get_datetime_original(image)
                             fields_modified = []
                             if modify_original:
@@ -362,9 +423,18 @@ if uploaded_file is not None:
                             if modify_datetime:
                                 fields_modified.append("DateTime")
 
-                            summary = get_modification_summary(
-                                old_dt, target_datetime, fields_modified
-                            )
+                            if use_existing_exif:
+                                st.info(
+                                    f"ℹ️ **Preserved existing EXIF date:** {target_datetime.strftime('%Y-%m-%d %H:%M:%S')}"
+                                )
+                                summary = f"**Operation Summary:**\n\n"
+                                summary += f"- **Action:** EXIF date preserved (no changes to datetime)\n"
+                                summary += f"- **DateTime:** {target_datetime.strftime('%Y-%m-%d %H:%M:%S')}\n"
+                                summary += f"- **Fields Verified:** {', '.join(fields_modified)}\n"
+                            else:
+                                summary = get_modification_summary(
+                                    old_dt, target_datetime, fields_modified
+                                )
 
                             st.markdown(summary)
 

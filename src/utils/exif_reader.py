@@ -129,3 +129,40 @@ def get_all_datetime_fields(image: Image.Image) -> Dict[str, Optional[str]]:
         pass
 
     return result
+
+
+def has_valid_exif_datetime(image: Image.Image) -> Tuple[bool, Optional[datetime]]:
+    """
+    Check if the image has valid EXIF datetime information.
+
+    Args:
+        image: PIL Image object
+
+    Returns:
+        Tuple of (has_valid_datetime, datetime_object)
+        Returns (True, datetime) if valid EXIF exists, (False, None) otherwise
+    """
+    try:
+        # Get DateTimeOriginal first (most reliable)
+        dt_string = get_datetime_original(image)
+
+        if dt_string:
+            # Try to parse it
+            dt_obj = parse_exif_datetime(dt_string)
+            if dt_obj:
+                return True, dt_obj
+
+        # Fallback: check all fields
+        all_fields = get_all_datetime_fields(image)
+
+        # Try each field in priority order
+        for field in ["DateTimeOriginal", "DateTimeDigitized", "DateTime"]:
+            if all_fields.get(field):
+                dt_obj = parse_exif_datetime(all_fields[field])
+                if dt_obj:
+                    return True, dt_obj
+
+        return False, None
+
+    except Exception:
+        return False, None
