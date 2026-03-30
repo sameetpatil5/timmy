@@ -6,6 +6,8 @@ from PIL import Image
 import io
 import os
 from typing import Tuple
+import piexif
+import tempfile
 
 
 def save_image_with_exif(
@@ -78,6 +80,40 @@ def save_image_with_exif(
 
     except Exception as e:
         return b"", f"Failed to save image: {str(e)}"
+
+
+def insert_exif_lossless(original_bytes: bytes, exif_bytes: bytes) -> Tuple[bytes, str]:
+    input_path = None
+    output_path = None
+
+    try:
+        # Create temp input file
+        with tempfile.NamedTemporaryFile(delete=False) as input_file:
+            input_file.write(original_bytes)
+            input_path = input_file.name
+
+        # Create temp output file
+        with tempfile.NamedTemporaryFile(delete=False) as output_file:
+            output_path = output_file.name
+
+        # Insert EXIF (lossless)
+        piexif.insert(exif_bytes, input_path, output_path)
+
+        # Read result
+        with open(output_path, "rb") as f:
+            output_bytes = f.read()
+
+        return output_bytes, ""
+
+    except Exception as e:
+        return b"", f"Lossless EXIF insert failed: {str(e)}"
+
+    finally:
+        # 🧹 Clean up temp files
+        if input_path and os.path.exists(input_path):
+            os.remove(input_path)
+        if output_path and os.path.exists(output_path):
+            os.remove(output_path)
 
 
 def generate_output_filename(original_filename: str, suffix: str = "_fixed") -> str:

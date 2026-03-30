@@ -10,7 +10,7 @@ import streamlit as st
 #         file_name=st.session_state.output_filename,
 #         mime=f"image/{image.format.lower() if image.format else 'jpeg'}",
 #         type="primary",
-#         use_container_width=True,
+#         width='stretch',
 #         disabled=not st.session_state.processed_image
 #     )
 
@@ -24,7 +24,6 @@ import streamlit as st
 def render_download_section(image):
     st.subheader("6️⃣ Download Fixed Image")
 
-
     if st.session_state.get("processed_image") is not None:
 
         pressed_download = st.download_button(
@@ -33,7 +32,7 @@ def render_download_section(image):
             file_name=st.session_state.output_filename,
             mime=f"image/{image.format.lower() if image.format else 'jpeg'}",
             type="primary",
-            use_container_width=True,
+            width="stretch",
         )
 
         if pressed_download:
@@ -45,8 +44,8 @@ def render_download_section(image):
         st.button(
             label="⬇️ Download Fixed Image",
             type="primary",
-            use_container_width=True,
-            disabled=st.session_state.get("processed_image") is None
+            width="stretch",
+            disabled=st.session_state.get("processed_image") is None,
         )
 
         st.info("👈 Apply changes first, then download the fixed image.")

@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 
+
 def render_review_images_section(batch):
 
     if batch.loaded_count > 0:
@@ -30,7 +31,7 @@ def render_review_images_section(batch):
                 )
 
         df = pd.DataFrame(summary_data)
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        st.dataframe(df, width="stretch", hide_index=True)
 
         # Statistics
         col1, col2, col3, col4 = st.columns(4)

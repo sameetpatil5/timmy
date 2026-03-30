@@ -3,6 +3,7 @@ from datetime import datetime
 import io
 import zipfile
 
+
 def zip_processed_images(batch):
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
@@ -11,6 +12,7 @@ def zip_processed_images(batch):
 
     zip_buffer.seek(0)
     return zip_buffer.getvalue()
+
 
 def render_download_section(batch):
     # Step 8: Download results
@@ -36,11 +38,11 @@ def render_download_section(batch):
             file_name=f"fixed_images_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
             mime="application/zip",
             type="primary",
-            use_container_width=True,
-            disabled=batch.processed_count == 0
+            width="stretch",
+            disabled=batch.processed_count == 0,
         )
 
     with col2:
-        if st.button("🗑️ Clear All", use_container_width=True):
+        if st.button("🗑️ Clear All", width="stretch"):
             st.session_state.batch_processor = None
             st.rerun()

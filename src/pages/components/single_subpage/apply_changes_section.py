@@ -36,7 +36,7 @@ def render_apply_changes_section(
                 f"ℹ️ **Action:** Updating EXIF date to: **{target_datetime.strftime('%Y-%m-%d %H:%M:%S')}**"
             )
 
-        if st.button("🔧 Apply Changes", type="primary", use_container_width=True):
+        if st.button("🔧 Apply Changes", type="primary", width="stretch"):
 
             with st.spinner("Processing image..."):
 

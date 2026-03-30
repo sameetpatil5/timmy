@@ -8,7 +8,7 @@ def render_process_images_section(
     # Step 7: Process all
     st.subheader("6️⃣ Process All Images")
 
-    if st.button("🚀 Process All Images", type="primary", use_container_width=True):
+    if st.button("🚀 Process All Images", type="primary", width="stretch"):
 
         with st.spinner(f"Processing {batch.loaded_count} images..."):
             success, failed = batch.process_all(
@@ -44,4 +44,4 @@ def render_process_images_section(
             )
 
         df_results = pd.DataFrame(result_data)
-        st.dataframe(df_results, use_container_width=True, hide_index=True)
+        st.dataframe(df_results, width="stretch", hide_index=True)

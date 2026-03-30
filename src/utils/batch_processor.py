@@ -12,7 +12,7 @@ from utils.image_loader import load_image
 from utils.exif_reader import has_valid_exif_datetime, get_datetime_original
 from utils.filename_parser import parse_filename_auto
 from utils.exif_writer import update_exif_datetime, exif_dict_to_bytes
-from utils.file_exporter import save_image_with_exif, generate_output_filename
+from utils.file_exporter import save_image_with_exif, generate_output_filename, insert_exif_lossless
 
 
 class ImageBatchItem:
@@ -218,8 +218,12 @@ class BatchProcessor:
                 # Save image
                 output_format = item.image.format if item.image.format else "JPEG"
 
-                output_bytes, save_error = save_image_with_exif(
-                    item.file_bytes, item.image, exif_bytes, output_format
+                # output_bytes, save_error = save_image_with_exif(
+                #     item.file_bytes, item.image, exif_bytes, output_format
+                # )
+
+                output_bytes, save_error = insert_exif_lossless(
+                    item.file_bytes, exif_bytes
                 )
 
                 if save_error:
